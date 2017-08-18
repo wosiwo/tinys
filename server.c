@@ -136,7 +136,7 @@ int server(char* ip,int port)
 
 
                //将接受到的请求抛给PHP
-               php_tinys_onReceive(line);
+               php_tinys_onReceive(sockfd,line);
 
           }
          else if(events[i].events&EPOLLOUT)

@@ -122,7 +122,11 @@ extern zend_module_entry alinq_module_entry;
 #include "Zend/zend_interfaces.h"
 
 //#include "php7_wrapper.h"
+#include <sys/poll.h>
 
+#define SW_MAKE_STD_ZVAL(p)             zval _stack_zval_##p; p = &(_stack_zval_##p)
+#define SW_ZVAL_STRINGL(z, s, l, dup)         ZVAL_STRINGL(z, s, l)
+#define SW_ZVAL_STRING(z,s,dup)               ZVAL_STRING(z,s)
 //调用用户空间函数
 int walu_call_user_function(zval** retval, zval* obj, char* function_name, char* paras, ...);
 

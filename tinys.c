@@ -50,9 +50,9 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tinys_set_on, 0, 0, 1)
     ZEND_ARG_INFO(0, callback)
 ZEND_END_ARG_INFO()
 
-int php_tinys_onReceive(char *line)
+int php_tinys_onReceive(int fd,char *line)
 {
-	printf("php_tinys_onReceive\n");
+	printf("php_tinys_onReceive fd %d \n",fd);
 	zval *retval = NULL;
 	zval **args[4];
 
@@ -60,6 +60,17 @@ int php_tinys_onReceive(char *line)
 	zval *method = NULL;
 	zval *obj = NULL;
 
+	zval *zfd = NULL;
+	zval *zdata;
+
+	SW_MAKE_STD_ZVAL(zfd);
+	SW_MAKE_STD_ZVAL(zdata);
+//	ZVAL_UNDEF(zfd);
+//	ZVAL_LONG(zfd, (long ) fd);
+	ZVAL_LONG(zfd,5);
+	SW_ZVAL_STRINGL(zdata, line, sizeof(line), 1);
+
+	printf("php_tinys_onReceive step 0 \n");
 //	int type = Z_TYPE_P(callback);
 //	printf('callback type %d',type);
 //	if (zend_hash_num_elements(Z_ARRVAL_P(callback)) == 2) {
@@ -94,8 +105,8 @@ int php_tinys_onReceive(char *line)
 
 	printf("php_tinys_onReceive step 1 \n");
 
-	args[0] = &line;
-	args[1] = &line;
+	args[0] = &zfd;
+	args[1] = &zdata;
 	args[2] = &line;
 	args[3] = &line;
 
@@ -217,9 +228,11 @@ PHP_METHOD(tinys, run)
 
 PHP_METHOD(tinys, send)
 {
+	printf("tinys_send \n");
 
 	zval *zobject = getThis();
 
+	printf("tinys_send 1 \n");
 	int ret;
 
 	zval *zfd;
@@ -230,11 +243,18 @@ PHP_METHOD(tinys, send)
 		return;
 	}
 
+	printf("tinys_send 2 \n");
 	char *data;
 //	int length = php_swoole_get_send_data(zdata, &data TSRMLS_CC);
 	convert_to_string(zdata);
+	printf("tinys_send 2.1 \n");
 	int length = Z_STRLEN_P(zdata);
-	*data = Z_STRVAL_P(zdata);
+	printf("tinys_send 2.2 length %l \n",length);
+	data = Z_STRVAL_P(zdata);
+
+	printf("tinys_send 3 \n");
+
+	printf("send data %s",data);
 
 	if (length < 0)
 	{
@@ -245,7 +265,7 @@ PHP_METHOD(tinys, send)
 		printf("data is empty.");
 		RETURN_FALSE;
 	}
-
+	printf("tinys_send setp 4 \n");
 	convert_to_long(zfd);
 	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
 
@@ -262,12 +282,16 @@ PHP_METHOD(tinys, send)
 
 int swSocket_write_blocking(int __fd, void *__data, int __len)
 {
+
+	printf("swSocket_write_blocking setp 1 \n");
     int n = 0;
     int written = 0;
 
     while (written < __len)
     {
+    	printf("swSocket_write_blocking setp 2 \n");
         n = write(__fd, __data + written, __len - written);
+        printf("swSocket_write_blocking setp 3 \n");
         if (n < 0)
         {
             if (errno == EINTR)
@@ -340,6 +364,7 @@ zend_function_entry tinys_method[]=
 //    ZEND_ME(tinys,    Instance,  NULL,   ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     ZEND_ME(tinys,    on,  NULL,   ZEND_ACC_PUBLIC)
     ZEND_ME(tinys,    run,  NULL,   ZEND_ACC_PUBLIC)
+    ZEND_ME(tinys,    send,  NULL,   ZEND_ACC_PUBLIC)
 //    ZEND_ME(tinys,    GroupBy,  NULL,   ZEND_ACC_PUBLIC)
 //    ZEND_ME(tinys,    Concat,  NULL,   ZEND_ACC_PUBLIC)
     // ZEND_ME(tinys,    GetApplicables,  NULL,   ZEND_ACC_PUBLIC)
