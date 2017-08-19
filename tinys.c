@@ -252,6 +252,7 @@ PHP_METHOD(tinys, send)
 	printf("tinys_send 2.2 length %l \n",length);
 	data = Z_STRVAL_P(zdata);
 
+//	response = strcp();
 	printf("tinys_send 3 \n");
 
 	printf("send data %s",data);
@@ -270,7 +271,9 @@ PHP_METHOD(tinys, send)
 	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
 
 	//使用write阻塞写入
-	ret = swSocket_write_blocking(fd,data,length);
+
+
+//	ret = swSocket_write_blocking(fd,data,length);
 	if (ret < 0)
 	{
 		printf("sendto to reactor failed. Error: %s [%d]", strerror(errno), errno);
@@ -289,11 +292,12 @@ int swSocket_write_blocking(int __fd, void *__data, int __len)
 
     while (written < __len)
     {
-    	printf("swSocket_write_blocking setp 2 \n");
-        n = write(__fd, __data + written, __len - written);
-        printf("swSocket_write_blocking setp 3 \n");
-        if (n < 0)
-        {
+    	printf("swSocket_write_blocking setp 2 __len %d __fd %d \n",__len,__fd);
+		n = write(__fd, __data + written, __len - written);
+		printf("swSocket_write_blocking setp 3 n %d \n",n);
+		if (n < 0)
+		{
+			printf("errno %d \n",errno);
             if (errno == EINTR)
             {
                 continue;
