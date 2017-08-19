@@ -36,13 +36,22 @@ int setnonblocking( int fd )
 #define LOCAL_ADDR "0.0.0.0"
 //监听队列长度
 #define LISTENQ 10
+
+
+char response[MAXLENGTH];
+
+
+struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
+int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
+
+
 int server(char* ip,int port)
 {
-	int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
+//	int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
     ssize_t n;
     char line[MAXLENGTH];
     socklen_t clilen;
-    struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
+//    struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
     struct sockaddr_in clientaddr, serveraddr;
     listenfd = socket(AF_INET, SOCK_STREAM, 0);//生成socket文件描述符
     setnonblocking(listenfd);//把socket设置为非阻塞方式
