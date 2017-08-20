@@ -9,7 +9,7 @@
     
     cd tinys
     phpize
-    ###需要指定php-config路径，本地机器为/usr/bin/php-config
+    需要指定php-config路径，本地机器为/usr/bin/php-config
     ./configure -with-php-config=/usr/bin/php-config
     make && make install
     ```
