@@ -70,6 +70,8 @@ int php_tinys_onReceive(int fd,char *line,int n)
 	ZVAL_LONG(zfd,5);
 	SW_ZVAL_STRINGL(zdata, line,n, 1);
 
+	printf("zdata  %s\n",Z_STRVAL_P(zdata));
+
 	printf("php_tinys_onReceive step 0 \n");
 //	int type = Z_TYPE_P(callback);
 //	printf('callback type %d',type);
@@ -107,7 +109,7 @@ int php_tinys_onReceive(int fd,char *line,int n)
 
 	args[0] = &zfd;
 	args[1] = &zdata;
-	args[2] = &zfd;
+	args[2] = &zfd;		//直接传 char * 类型可能导致 Segmentation fault
 	args[3] = &zfd;
 
 	if (sw_call_user_function_ex(EG(function_table), NULL, callback, &retval, 4, args, 0, NULL TSRMLS_CC) == FAILURE)
