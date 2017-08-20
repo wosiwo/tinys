@@ -4,7 +4,7 @@
 
 ## 编译扩展(需要php7)
 
-    ###    需要指定php-config路径，本地机器为/usr/bin/php-config
+需要指定php-config路径，本地机器为/usr/bin/php-config
 
     ```
     git clone https://github.com/wosiwo/tinys.git
