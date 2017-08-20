@@ -68,7 +68,7 @@ int php_tinys_onReceive(int fd,char *line,int n)
 //	ZVAL_UNDEF(zfd);
 //	ZVAL_LONG(zfd, (long ) fd);
 	ZVAL_LONG(zfd,5);
-	SW_ZVAL_STRINGL(zdata, line, n, 1);
+	SW_ZVAL_STRINGL(zdata, line,n, 1);
 
 	printf("php_tinys_onReceive step 0 \n");
 //	int type = Z_TYPE_P(callback);
@@ -107,8 +107,8 @@ int php_tinys_onReceive(int fd,char *line,int n)
 
 	args[0] = &zfd;
 	args[1] = &zdata;
-	args[2] = &line;
-	args[3] = &line;
+	args[2] = &zfd;
+	args[3] = &zfd;
 
 	if (sw_call_user_function_ex(EG(function_table), NULL, callback, &retval, 4, args, 0, NULL TSRMLS_CC) == FAILURE)
 	{
