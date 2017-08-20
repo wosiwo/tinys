@@ -50,7 +50,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tinys_set_on, 0, 0, 1)
     ZEND_ARG_INFO(0, callback)
 ZEND_END_ARG_INFO()
 
-int php_tinys_onReceive(int fd,char *line)
+int php_tinys_onReceive(int fd,char *line,int n)
 {
 	printf("php_tinys_onReceive fd %d \n",fd);
 	zval *retval = NULL;
@@ -68,7 +68,7 @@ int php_tinys_onReceive(int fd,char *line)
 //	ZVAL_UNDEF(zfd);
 //	ZVAL_LONG(zfd, (long ) fd);
 	ZVAL_LONG(zfd,5);
-	SW_ZVAL_STRINGL(zdata, line, sizeof(line), 1);
+	SW_ZVAL_STRINGL(zdata, line, n, 1);
 
 	printf("php_tinys_onReceive step 0 \n");
 //	int type = Z_TYPE_P(callback);
@@ -251,8 +251,16 @@ PHP_METHOD(tinys, send)
 	int length = Z_STRLEN_P(zdata);
 	printf("tinys_send 2.2 length %l \n",length);
 	data = Z_STRVAL_P(zdata);
+//	data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+//	response = data;
+//	char response[200];
 
-//	response = strcp();
+//	 strcpy(response, data);
+//	 printf("res1 char %c \n",response[20]);
+//	 printf("res1 char %c \n",response[1]);
+//	 printf("res1 char %c \n",response[10]);
+
+
 	printf("tinys_send 3 \n");
 
 	printf("send data %s",data);
@@ -269,9 +277,11 @@ PHP_METHOD(tinys, send)
 	printf("tinys_send setp 4 \n");
 	convert_to_long(zfd);
 	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
-
-	//使用write阻塞写入
-
+//
+//
+	//修改epoll状态,发送数据
+//	data = "send back \n";
+	setOutPut(data,fd,length);
 
 //	ret = swSocket_write_blocking(fd,data,length);
 	if (ret < 0)

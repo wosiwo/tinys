@@ -37,13 +37,25 @@ int setnonblocking( int fd )
 //监听队列长度
 #define LISTENQ 10
 
-
 char response[MAXLENGTH];
-
+int resLength;
 
 struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
 int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
 
+
+int setOutPut(char * data,int fd,int length){
+	printf("setOutPut fd %d \n",fd);
+	printf("epfd fd %d \n",epfd);
+
+	resLength =length;
+
+	memcpy(response, data, resLength);
+//	strcpy(response, data);	//data 中包含 \0(可能) 不能使用strcpy
+	 ev.data.fd=fd;//设置用于写操作的文件描述符
+	   ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
+	   epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
+}
 
 int server(char* ip,int port)
 {
@@ -145,16 +157,37 @@ int server(char* ip,int port)
 
 
                //将接受到的请求抛给PHP
-               php_tinys_onReceive(sockfd,line);
+               php_tinys_onReceive(sockfd,line,n);
 
           }
          else if(events[i].events&EPOLLOUT)
          {
              sockfd = events[i].data.fd;
-              write(sockfd, line, n);
+//             int length = sizeof(response);
+             printf("response length %d \n",resLength);
+             int  ret;
+             printf("wirte data fd %d \n",sockfd);
+//             strcpy(response, "sendback");
+             printf("response %s \n",response);
+//              ret =  write(sockfd, response, n);
+//             response  = "send back \n";
+
+             printf("res char %c \n",response[20]);
+             printf("res char %c \n",response[1]);
+             printf("res char %c \n",response[10]);
+              ret =  write(sockfd, response, resLength);
+//              ret =  write(sockfd, line, n);
+              printf("ret %d \n",ret);
+              if (ret<0)
+				{
+					printf("errno %d \n",errno);
+				}
               ev.data.fd=sockfd;//设置用于读操作的文件描述符
-              ev.events=EPOLLIN|EPOLLET;//设置用于注测的读操作事件
-              epoll_ctl(epfd,ev.events,sockfd,&ev);//修改sockfd上要处理的事件为EPOLIN
+              ev.events=EPOLLET;//设置用于注测的读操作事件 EPOLLIN|
+              //EPOLL_CTL_DEL
+              epoll_ctl( epfd, EPOLL_CTL_DEL, sockfd, 0 );
+              close( sockfd );
+//              epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);//修改sockfd上要处理的事件为EPOLIN
          }
      }
     }
