@@ -8,9 +8,9 @@
 
     ```
     git clone https://github.com/wosiwo/tinys.git
-    
     cd tinys
     phpize
     ./configure -with-php-config=/usr/bin/php-config
     make && make install
+    
     ```
