@@ -59,5 +59,5 @@ if test "$PHP_TINYS" != "no"; then
   dnl
   PHP_SUBST(TINYS_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(tinys, tinys.c server.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+  PHP_NEW_EXTENSION(tinys,tinys.c tinys_client.c server.c client.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
 fi

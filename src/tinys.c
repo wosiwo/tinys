@@ -308,6 +308,7 @@ PHP_MINIT_FUNCTION(tinys)
 	zend_class_entry ce;
 	INIT_CLASS_ENTRY(ce,"tinys",tinys_method);
 	tinys_ce = zend_register_internal_class(&ce TSRMLS_CC);
+	tinys_client_init();
 	return SUCCESS;
 }
 /* }}} */
