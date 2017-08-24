@@ -38,11 +38,8 @@ extern zend_module_entry tinys_module_entry;
 #include "TSRM.h"
 #endif
 
-
-
 #define PHP_SERVER_CALLBACK_NUM 10
 #define SW_PHP_MAX_PARAMS_NUM     20
-
 
 #define SW_WORKER_WAIT_TIMEOUT     1000
 
@@ -62,17 +59,11 @@ enum swEvent_type
 #define SW_DECLINED           -5
 #define SW_ABORT              -6
 
-
 //#define SW_USE_PHP        1
 #define SW_CHECK_RETURN(s)         if(s<0){RETURN_FALSE;}else{RETURN_TRUE;}return
 #define SW_LOCK_CHECK_RETURN(s)    if(s==0){RETURN_TRUE;}else{RETURN_FALSE;}return
 
-
-
 zval *php_sw_server_callbacks[PHP_SERVER_CALLBACK_NUM];
-
-
-
 /*
   	Declare any global variables you may need between the BEGIN
 	and END macros here:
@@ -113,8 +104,6 @@ extern zend_module_entry alinq_module_entry;
 
 #endif
 
-
-
 // #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
@@ -132,8 +121,6 @@ int walu_call_user_function(zval** retval, zval* obj, char* function_name, char*
 
 //server主函数
 int server(char* ip,int port);
-
-
 
 static  zval* sw_zend_read_property(zend_class_entry *class_ptr, zval *obj, char *s, int len, int silent)
 {

@@ -50,10 +50,10 @@ int setOutPut(char * data,int fd,int length){
 	resLength =length;
 
 	memcpy(response, data, resLength);
-//	strcpy(response, data);	//data 中包含 \0(可能) 不能使用strcpy
-	 ev.data.fd=fd;//设置用于写操作的文件描述符
-	   ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
-	   epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
+	//strcpy(response, data);	//data 中包含 \0(可能) 不能使用strcpy
+	ev.data.fd=fd;//设置用于写操作的文件描述符
+	ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
+	epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
 }
 //服务启动
 int server(char* ip,int port)

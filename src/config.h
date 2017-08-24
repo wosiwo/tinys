@@ -61,14 +61,8 @@
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
-
-
-
-
-
 #define PHP_SERVER_CALLBACK_NUM 10
 #define SW_PHP_MAX_PARAMS_NUM     20
-
 
 #define SW_WORKER_WAIT_TIMEOUT     1000
 
