@@ -1,3 +1,4 @@
+make distclean
 find . -name \*.gcno -o -name \*.gcda | xargs rm -f
 find . -name \*.lo -o -name \*.o | xargs rm -f
 find . -name \*.la -o -name \*.a | xargs rm -f 

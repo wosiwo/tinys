@@ -51,6 +51,8 @@ int cli_connect(char* ip, int port) {
 //发送数据
 int cli_send(char* data, int dataLength) {
 	int length = write(cl_socket, data, dataLength);
+	printf("length %d",dataLength);
+	printf("cl_socket %d",cl_socket);
 	return length;
 }
 //接受数据
