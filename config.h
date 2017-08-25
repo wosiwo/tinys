@@ -34,9 +34,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
-/* Define to the sub-directory where libtool stores uninstalled libraries. */
-#define LT_OBJDIR ".libs/"
-
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 /* #undef NO_MINUS_C_MINUS_O */
 
@@ -60,13 +57,3 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
-
-#define PHP_SERVER_CALLBACK_NUM 10
-#define SW_PHP_MAX_PARAMS_NUM     20
-
-#define SW_WORKER_WAIT_TIMEOUT     1000
-
-#define MAXLINE 5000
-#define MAXLENGTH 2465792
-
-
