@@ -209,7 +209,6 @@ PHP_METHOD(tinys, send)
 		printf("data is empty.");
 		RETURN_FALSE;
 	}
-	printf("tinys_send setp 4 \n");
 	convert_to_long(zfd);
 	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
 	//修改epoll状态,发送数据 --返回c代码
@@ -221,75 +220,6 @@ PHP_METHOD(tinys, send)
 	SW_CHECK_RETURN(ret);
 }
 
-int swSocket_write_blocking(int __fd, void *__data, int __len)
-{
-	printf("swSocket_write_blocking setp 1 \n");
-    int n = 0;
-    int written = 0;
-    	while (written < __len)
-    {
-    	printf("swSocket_write_blocking setp 2 __len %d __fd %d \n",__len,__fd);
-		n = write(__fd, __data + written, __len - written);
-		printf("swSocket_write_blocking setp 3 n %d \n",n);
-		if (n < 0)
-		{
-			printf("errno %d \n",errno);
-            if (errno == EINTR)
-            {
-                continue;
-            }
-            else if (errno == EAGAIN)
-            {
-                swSocket_wait(__fd, SW_WORKER_WAIT_TIMEOUT, SW_EVENT_WRITE);
-                continue;
-            }
-            else
-            {
-                printf("write %d bytes failed.", __len);
-                return SW_ERR;
-            }
-        }
-        written += n;
-    }
-    return written;
-}
-
-/**
- * Wait socket can read or write.
- */
-int swSocket_wait(int fd, int timeout_ms, int events)
-{
-    struct pollfd event;
-    event.fd = fd;
-    event.events = 0;
-
-    if (events & SW_EVENT_READ)
-    {
-        event.events |= POLLIN;
-    }
-    if (events & SW_EVENT_WRITE)
-    {
-        event.events |= POLLOUT;
-    }
-    while (1)
-    {
-        int ret = poll(&event, 1, timeout_ms);
-        if (ret == 0)
-        {
-            return SW_ERR;
-        }
-        else if (ret < 0 && errno != EINTR)
-        {
-        	printf("poll() failed. Error: %s[%d]", strerror(errno), errno);
-            return SW_ERR;
-        }
-        else
-        {
-            return SW_OK;
-        }
-    }
-    return SW_OK;
-}
 //然后，定义一个zend_function_entry
 zend_function_entry tinys_method[]=
 {

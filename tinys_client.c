@@ -56,7 +56,6 @@ PHP_METHOD(tinys_client, send)
 {
 	zval *zobject = getThis();
 	int ret;
-	zval *zfd;
 	zval *zdata;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &zdata) == FAILURE)
 	{
@@ -66,6 +65,7 @@ PHP_METHOD(tinys_client, send)
 	convert_to_string(zdata);
 	int length = Z_STRLEN_P(zdata);
 	data = Z_STRVAL_P(zdata);
+	printf("break point 1\n");
 	if (length < 0)
 	{
 		RETURN_FALSE;
@@ -75,11 +75,12 @@ PHP_METHOD(tinys_client, send)
 		printf("data is empty.");
 		RETURN_FALSE;
 	}
-	printf("tinys_send setp 4 \n");
-	convert_to_long(zfd);
-	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
+	printf("break point 2\n");
+
+	printf("break point 3\n");
 	//发送数据给服务端
 	ret = cli_send(data, length);
+	printf("break point 4\n");
 	if (ret < 0)
 	{
 		printf("sendto to reactor failed. Error: %s [%d]", strerror(errno), errno);
@@ -89,7 +90,7 @@ PHP_METHOD(tinys_client, send)
 //发送数据方法
 PHP_METHOD(tinys_client, recv)
 {
-	char ret;
+	char *ret;
 	ret=cli_recv();
 	SW_CHECK_RETURN(ret);
 }
