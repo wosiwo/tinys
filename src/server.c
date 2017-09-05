@@ -64,7 +64,7 @@ int epollCreate(){
     return epfd;
 }
 
-int epollAdd(epollfd,readfd, int fdtype){
+int epollAdd(int epollfd,int readfd, int fdtype){
 	struct epoll_event e;
 	setnonblocking(readfd,epollfd);
 	//生成用于处理accept的epoll专用的文件描述符
@@ -156,9 +156,10 @@ int mainReactorRun(char* ip,int port)
     ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, masterSocks);
     //获取用于读取的fd
      readfd = masterSocks[1];
-     int fdtype = SW_FD_PIPE | SW_EVENT_READ;
+//     int pipe_fdtype = SW_FD_PIPE | SW_EVENT_READ;
+     int pipe_fdtype = EPOLLIN|EPOLLET;
 	 //TODO fdtype 是否需要转化 swReactorEpoll_event_set
-	 epollAdd(epfd,readfd,fdtype);
+	 epollAdd(epfd,readfd,pipe_fdtype);
     while(1)
     {
 		/* epoll_wait：等待epoll事件的发生，并将发生的sokct fd和事件类型放入到events数组中；
@@ -198,7 +199,7 @@ int mainReactorRun(char* ip,int port)
 				swEventData task;
 				int n;
 
-				if ((n=recv(sockfd, task, sizeof(task), 0)) > 0)
+				if ((n=recv(sockfd, &task, sizeof(task), 0)) > 0)
 				{
 					//修改事件状态为输出
 					setOutPut(task.data,task.info.from_fd,task.info.len);

@@ -76,7 +76,7 @@ struct tyServer{
 //	 swReactorThread *reactor_threads;
 //	    swWorker *workers;
 };
-struct _tyWorker{
+typedef struct _tyWorker{
 	int pid;
 	int pipReadFd;
 	int pipWriteFd;
