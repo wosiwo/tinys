@@ -66,7 +66,7 @@ int epollCreate(){
 
 int epollAdd(int epollfd,int readfd, int fdtype){
 	struct epoll_event e;
-	setnonblocking(readfd,epollfd);
+	setnonblocking(readfd);
 	//生成用于处理accept的epoll专用的文件描述符
 //	epfd=epoll_create(256);
 	//设置与要处理的事件相关的文件描述符
@@ -242,7 +242,7 @@ int mainReactorRun(char* ip,int port)
 				//TODO 后续多个reactor线程，需要记录线程id
 				// 需要写一个结构体，传入连接fd
 				memcpy(task.data, line, n);
-				ret = write(pipeWriteFd, task, sizeof(task));
+				ret = write(pipeWriteFd, &task, sizeof(task));
 
 			}
 			else if(events[i].events&EPOLLOUT)//当数据发送触发下面的流程
@@ -285,7 +285,7 @@ int send2ReactorPipe(char * data,int fd,int length){
 
 	int masterWritePipe = masterSocks[0];
 
-	ret = write(masterWritePipe, task, sizeof(task));
+	ret = write(masterWritePipe, &task, sizeof(task));
 
 	return 1;
 }
