@@ -64,19 +64,32 @@ int epollCreate(){
     return epfd;
 }
 
-int epollAdd(epollfd,readfd){
+int epollAdd(epollfd,readfd, int fdtype){
 	struct epoll_event e;
 	setnonblocking(readfd,epollfd);
 	//生成用于处理accept的epoll专用的文件描述符
-	epfd=epoll_create(256);
+//	epfd=epoll_create(256);
 	//设置与要处理的事件相关的文件描述符
-	e.data.fd=listenfd;
+	e.data.fd=readfd;
 	//设置要处理的事件类型
-	e.events=SW_FD_PIPE | SW_EVENT_READ;
+	e.events=fdtype;
+//	e.events=SW_FD_PIPE | SW_EVENT_READ;
 	//注册epoll事件
 	epoll_ctl(epollfd,EPOLL_CTL_ADD,readfd,&e);
 
 	return SW_OK;
+}
+
+
+int epollEventSet(int efd, int fd, int events) {
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.events = events;
+    ev.data.fd = fd;
+
+    int r = epoll_ctl(efd, EPOLL_CTL_MOD, fd, &ev);
+
+    return SW_OK;
 }
 
 
@@ -98,12 +111,11 @@ int runServer(char* ip,int port){
 }
 
 
+int masterSocks[2];
+
 //服务启动
 int mainReactorRun(char* ip,int port)
 {
-
-
-	//int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
     ssize_t n;
     char line[MAXLENGTH];
     socklen_t clilen;
@@ -114,32 +126,39 @@ int mainReactorRun(char* ip,int port)
     //把socket设置为非阻塞方式
     setnonblocking(listenfd);
     //生成用于处理accept的epoll专用的文件描述符
-    epfd=epoll_create(256);
-    //设置与要处理的事件相关的文件描述符
-    ev.data.fd=listenfd;
-    //设置要处理的事件类型
-    ev.events=EPOLLIN|EPOLLET;
-    //注册epoll事件
-    epoll_ctl(epfd,EPOLL_CTL_ADD,listenfd,&ev);
-    printf("step 1 \n");
+//    epfd=epoll_create(256);
+    epfd = epollCreate();
+    //添加监听事件，监听端口
+    int fdtype =EPOLLIN|EPOLLET;
+    epollAdd(epfd,listenfd,fdtype);
+
     //设置服务器端地址信息
     bzero(&serveraddr, sizeof(serveraddr));
-    printf("step 2 \n");
     serveraddr.sin_family = AF_INET;
     //监听的地址
     char *local_addr= ip;
-    printf("step 3 \n");
     inet_aton(local_addr,&(serveraddr.sin_addr));
-    printf("step 3.1 \n");
     serveraddr.sin_port=htons(port);
-    printf("step 3.2 \n");
     //绑定socket连接
     bind(listenfd, ( struct sockaddr* )&serveraddr, sizeof(serveraddr));
-    printf("step 4 \n");
     //监听
     listen(listenfd, LISTENQ);
     maxi = 0;
     printf("listenfd %d \n",listenfd);
+
+
+
+    //添加管道监听，接受从worker近处返回的数据，发送给客户端
+    //创建管道，epoll监听
+    int ret;
+
+    int readfd;
+    ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, masterSocks);
+    //获取用于读取的fd
+     readfd = masterSocks[1];
+     int fdtype = SW_FD_PIPE | SW_EVENT_READ;
+	 //TODO fdtype 是否需要转化 swReactorEpoll_event_set
+	 epollAdd(epfd,readfd,fdtype);
     while(1)
     {
 		/* epoll_wait：等待epoll事件的发生，并将发生的sokct fd和事件类型放入到events数组中；
@@ -167,13 +186,25 @@ int mainReactorRun(char* ip,int port)
                 perror("setnonblocking\n");
                 setnonblocking(new_fd);
                 char *str = inet_ntoa(clientaddr.sin_addr);
-                //设置用于读操作的文件描述符
-                ev.data.fd=new_fd;
-                //设置用于注测的读操作事件
-                ev.events=EPOLLIN|EPOLLET;
-                epoll_ctl( epfd, EPOLL_CTL_ADD, new_fd, &ev );
+
+                //添加监听事件，监听本次连接
+			   int fdtype =EPOLLIN|EPOLLET;
+			   epollAdd(epfd,new_fd,fdtype);
+
             }
-			else if(events[i].events&EPOLLIN)//当数据进入触发下面的流程
+			else if(events[i].events&EPOLLIN && events[i].data.fd==readfd)//当数据进入触发下面的流程
+			{
+				//TODO worker进程返回的数据，接收完发给客户端
+				swEventData task;
+				int n;
+
+				if ((n=recv(sockfd, task, sizeof(task), 0)) > 0)
+				{
+					//修改事件状态为输出
+					setOutPut(task.data,task.info.from_fd,task.info.len);
+				}
+        	}
+			else if(events[i].events&EPOLLIN && events[i].data.fd!=readfd)//当数据进入触发下面的流程
 			{
 				sockfd = events[i].data.fd;
 				printf("read 0\n");
@@ -195,10 +226,6 @@ int mainReactorRun(char* ip,int port)
 				printf("line1 %c \n",line[20]);
 				printf("line2 %zu \n",sizeof(line));
 				printf("n %zu \n",n);
-				//设置用于写操作的文件描述符
-				ev.data.fd=sockfd;
-				ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
-	//              epoll_ctl(epfd,ev.events,sockfd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
 
 				//将接受到的请求抛给PHP
 	//                	php_tinys_onReceive(sockfd,line,n);
@@ -210,6 +237,7 @@ int mainReactorRun(char* ip,int port)
 
 				swEventData task;
 				task.info.from_fd = sockfd;
+				task.info.len = n;
 				//TODO 后续多个reactor线程，需要记录线程id
 				// 需要写一个结构体，传入连接fd
 				memcpy(task.data, line, n);
@@ -241,4 +269,22 @@ int mainReactorRun(char* ip,int port)
 			}
         }
     }
+}
+
+/**
+ * 将php返回的数据，写入主进程的管道中，由主进程发送给客户端
+ */
+int send2ReactorPipe(char * data,int fd,int length){
+	int ret;
+	swEventData task;
+	task.info.from_fd = fd;
+	task.info.len = length;
+	memcpy(task.data, data, length);
+
+
+	int masterWritePipe = masterSocks[0];
+
+	ret = write(masterWritePipe, task, sizeof(task));
+
+	return 1;
 }

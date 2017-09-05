@@ -58,7 +58,9 @@ int tyWorker_loop(int worker_id){
     //创建epoll
     epollfd = epollCreate();
     //添加监听事件，监听管道
-    epollAdd(epollfd,readfd);
+    int fdtype = SW_FD_PIPE | SW_EVENT_READ;
+    //TODO fdtype 是否需要转化 swReactorEpoll_event_set
+    epollAdd(epollfd,readfd,fdtype);
 
     //循环等待事件触发
     while(1)

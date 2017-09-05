@@ -211,8 +211,11 @@ PHP_METHOD(tinys, send)
 	}
 	convert_to_long(zfd);
 	uint32_t fd = (uint32_t) Z_LVAL_P(zfd);
+
+	//TODO 当前处于worker进程，将数据写入主进程监听的管道中，由主进程发送数据给客户端
+	send2ReactorPipe(data,fd,length);
 	//修改epoll状态,发送数据 --返回c代码
-	setOutPut(data,fd,length);
+//	setOutPut(data,fd,length);
 	if (ret < 0)
 	{
 		printf("sendto to reactor failed. Error: %s [%d]", strerror(errno), errno);
