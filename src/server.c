@@ -21,6 +21,8 @@
 //#include <cassert>
 #include <sys/epoll.h>
 //#include <sys/event.h>
+#include "ty_server.h"
+
 //设置非阻塞描述符
 int setnonblocking( int fd )
 {
@@ -29,19 +31,18 @@ int setnonblocking( int fd )
     fcntl( fd, F_SETFL, new_option );
     return old_option;
 }
-#define MAXLINE 5000
-#define MAXLENGTH 2465792
-#define SERV_PORT 3989
-#define LOCAL_ADDR "0.0.0.0"
-//监听队列长度
-#define LISTENQ 10
+
 
 char response[MAXLENGTH];
 int resLength;
 
+#define WORKER_NUM 20
+
+//tyWorker变量保存worker进程信息
+tyWorker  workers[WORKER_NUM];
+
 struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
 int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
-
 
 int setOutPut(char * data,int fd,int length){
 	printf("setOutPut fd %d \n",fd);
@@ -55,9 +56,53 @@ int setOutPut(char * data,int fd,int length){
 	ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
 	epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
 }
+
+int epollCreate(){
+
+    //生成用于处理accept的epoll专用的文件描述符
+    epfd=epoll_create(256);
+    return epfd;
+}
+
+int epollAdd(epollfd,readfd){
+	struct epoll_event e;
+	setnonblocking(readfd,epollfd);
+	//生成用于处理accept的epoll专用的文件描述符
+	epfd=epoll_create(256);
+	//设置与要处理的事件相关的文件描述符
+	e.data.fd=listenfd;
+	//设置要处理的事件类型
+	e.events=SW_FD_PIPE | SW_EVENT_READ;
+	//注册epoll事件
+	epoll_ctl(epollfd,EPOLL_CTL_ADD,readfd,&e);
+
+	return SW_OK;
+}
+
+
+int runServer(char* ip,int port){
+	//创建manager进程及其下的各个worker子进程
+	int workerNum ;
+	workerNum = WORKER_NUM;
+	manageProccess(workerNum);
+
+
+	//TODO 主进程创建各个reactor线程，之后主进程循环监听listen事件accept后抛给reactor线程处理，
+
+	//TODO 第一步实现：主进程中直接取出数据，抛给worker进程
+	mainReactorRun(ip, port);
+
+
+
+//	return server(ip, port);
+}
+
+
 //服务启动
-int server(char* ip,int port)
+int mainReactorRun(char* ip,int port)
 {
+
+
 	//int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
     ssize_t n;
     char line[MAXLENGTH];
@@ -127,13 +172,13 @@ int server(char* ip,int port)
                 //设置用于注测的读操作事件
                 ev.events=EPOLLIN|EPOLLET;
                 epoll_ctl( epfd, EPOLL_CTL_ADD, new_fd, &ev );
-            	}
-            	else if(events[i].events&EPOLLIN)//当数据进入触发下面的流程
-            	{
-            		sockfd = events[i].data.fd;
-            		printf("read 0\n");
-                if ( (n = recv(sockfd, line, MAXLENGTH, 0)) < 0){
-                		printf("read n  \n");
+            }
+			else if(events[i].events&EPOLLIN)//当数据进入触发下面的流程
+			{
+				sockfd = events[i].data.fd;
+				printf("read 0\n");
+				if ( (n = recv(sockfd, line, MAXLENGTH, 0)) < 0){
+						printf("read n  \n");
 					if (errno == ECONNRESET)
 					{
 						close(sockfd);
@@ -141,45 +186,59 @@ int server(char* ip,int port)
 					}else{
 						printf("readline error");
 					}
-                }else if (n == 0){
-                		printf("read error \n");
-                		close(sockfd);
-                		events[i].data.fd = -1;
-                }
-                printf("line %s \n",line);
-                printf("line1 %c \n",line[20]);
-                printf("line2 %zu \n",sizeof(line));
-                printf("n %zu \n",n);
-                //设置用于写操作的文件描述符
-                ev.data.fd=sockfd;
-                ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
-//              epoll_ctl(epfd,ev.events,sockfd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
-                //将接受到的请求抛给PHP
-                php_tinys_onReceive(sockfd,line,n);
-            	}
-            	else if(events[i].events&EPOLLOUT)//当数据发送触发下面的流程
-            	{
-            		sockfd = events[i].data.fd;
-            		printf("response length %d \n",resLength);
-            		int  ret;
-            		printf("wirte data fd %d \n",sockfd);
-            		printf("response %s \n",response);
-            		printf("res char %c \n",response[20]);
-            		printf("res char %c \n",response[1]);
-            		printf("res char %c \n",response[10]);
-            		ret =  write(sockfd, response, resLength);
-            		printf("ret %d \n",ret);
-            		if (ret<0)
-				{
-					printf("errno %d \n",errno);
+				}else if (n == 0){
+						printf("read error \n");
+						close(sockfd);
+						events[i].data.fd = -1;
 				}
-            		ev.data.fd=sockfd;//设置用于读操作的文件描述符
-            		ev.events=EPOLLET;//设置用于注测的读操作事件 EPOLLIN|
-            		//EPOLL_CTL_DEL
-            		epoll_ctl( epfd, EPOLL_CTL_DEL, sockfd, 0 );
-            		close( sockfd );
-            		//epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);//修改sockfd上要处理的事件为EPOLIN
-            	}
+				printf("line %s \n",line);
+				printf("line1 %c \n",line[20]);
+				printf("line2 %zu \n",sizeof(line));
+				printf("n %zu \n",n);
+				//设置用于写操作的文件描述符
+				ev.data.fd=sockfd;
+				ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
+	//              epoll_ctl(epfd,ev.events,sockfd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
+
+				//将接受到的请求抛给PHP
+	//                	php_tinys_onReceive(sockfd,line,n);
+					//TODO 写入管道,抛给worker子进程
+				//取取余数获取worker进程，将数据写入其监听的管道中
+				int i = sockfd%WORKER_NUM;
+				int pipeWriteFd = workers[i].pipWriteFd;
+				int ret;
+
+				swEventData task;
+				task.info.from_fd = sockfd;
+				//TODO 后续多个reactor线程，需要记录线程id
+				// 需要写一个结构体，传入连接fd
+				memcpy(task.data, line, n);
+				ret = write(pipeWriteFd, task, sizeof(task));
+
+			}
+			else if(events[i].events&EPOLLOUT)//当数据发送触发下面的流程
+			{
+				sockfd = events[i].data.fd;
+				printf("response length %d \n",resLength);
+				int  ret;
+				printf("wirte data fd %d \n",sockfd);
+				printf("response %s \n",response);
+				printf("res char %c \n",response[20]);
+				printf("res char %c \n",response[1]);
+				printf("res char %c \n",response[10]);
+				ret =  write(sockfd, response, resLength);
+				printf("ret %d \n",ret);
+				if (ret<0)
+			{
+				printf("errno %d \n",errno);
+			}
+				ev.data.fd=sockfd;//设置用于读操作的文件描述符
+				ev.events=EPOLLET;//设置用于注测的读操作事件 EPOLLIN|
+				//EPOLL_CTL_DEL
+				epoll_ctl( epfd, EPOLL_CTL_DEL, sockfd, 0 );
+				close( sockfd );
+				//epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);//修改sockfd上要处理的事件为EPOLIN
+			}
         }
     }
 }
