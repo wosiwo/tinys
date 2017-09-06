@@ -13,7 +13,7 @@
 #include <sys/epoll.h>
 
 
-#define WORKER_NUM 20
+#define WORKER_NUM 1
 
 #define MAXLINE 5000
 #define MAXLENGTH 2465792

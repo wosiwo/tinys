@@ -232,6 +232,7 @@ int mainReactorRun(char* ip,int port)
 				memcpy(task.data, line, n);
 				ret = write(pipeWriteFd, &task, sizeof(task));
 
+				printf("write worker_pipe_fd fd %d ret %d",pipeWriteFd,ret);
 			}
 			else if(events[i].events&EPOLLOUT)//当数据发送触发下面的流程
 			{

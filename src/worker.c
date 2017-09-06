@@ -13,6 +13,8 @@ int manageProccess(int workerNum)
 {
     pid_t pid;
     int i;
+    int ret;
+    int socks[2];
 
 	pid = fork();
 	switch (pid)
@@ -21,6 +23,14 @@ int manageProccess(int workerNum)
 	case 0:
 		for (i = 0; i < workerNum; i++)
 		{
+			//在manager进程中将所有管道都创建好
+			ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, socks);
+
+			//获取用于读取的fd
+			workers[i].pipReadFd = socks[1];
+			workers[i].pipWriteFd = socks[0];
+			printf("worker_id %d pipWriteFd %d \n",i,workers[i].pipWriteFd);
+
 			//close(worker_pipes[i].pipes[0]);
 			pid = tyManager_spawn_worker( i);
 			if (pid < 0)
@@ -40,7 +50,7 @@ int manageProccess(int workerNum)
 
 int tyWorker_loop(int worker_id){
 	int ret;
-	int socks[2];
+
 	int pipefd;
 	int readfd;
 	struct epoll_event local_events[20];
@@ -48,14 +58,8 @@ int tyWorker_loop(int worker_id){
 
 	int epollfd;
 	//TODO 监听pipe管道事件
-
-	//创建管道，epoll监听
-    ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, socks);
-
-    //获取用于读取的fd
-    readfd = socks[1];
-    workers[worker_id].pipReadFd = readfd;
-    workers[worker_id].pipWriteFd = socks[0];
+	//取出在manager进程中创建好的管道
+	readfd = workers[worker_id].pipReadFd;
 
     //创建epoll
     epollfd = epollCreate();
@@ -126,7 +130,7 @@ int swWorker_onPipeReceive(int fd){
     //worker child processor
     else if (pid == 0)
     {
-    	printf("worker child processor \n");
+    	printf("worker child processor worker_id %d \n",worker_id);
     	//TODO 监听pipe管道事件
 
         ret = tyWorker_loop( worker_id);
