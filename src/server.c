@@ -9,17 +9,7 @@
  * 	6. throw to php
  * 	7.
  */
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
-//#include <cassert>
-#include <sys/epoll.h>
+
 //#include <sys/event.h>
 #include "ty_server.h"
 
@@ -35,8 +25,6 @@ int setnonblocking( int fd )
 
 char response[MAXLENGTH];
 int resLength;
-
-#define WORKER_NUM 20
 
 //tyWorker变量保存worker进程信息
 tyWorker  workers[WORKER_NUM];

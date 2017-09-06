@@ -1,3 +1,20 @@
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+//#include <cassert>
+#include <sys/epoll.h>
+
+
+#define WORKER_NUM 20
+
 #define MAXLINE 5000
 #define MAXLENGTH 2465792
 #define SERV_PORT 3989

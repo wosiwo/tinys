@@ -5,13 +5,14 @@
 
 
 //引用worker各个子进程的的信息变量
-extern workers;
+extern tyWorker workers[WORKER_NUM];
 /**
  * 创建manager进程
  */
 int manageProccess(int workerNum)
 {
     pid_t pid;
+    int i;
 
 	pid = fork();
 	switch (pid)
@@ -24,7 +25,7 @@ int manageProccess(int workerNum)
 			pid = tyManager_spawn_worker( i);
 			if (pid < 0)
 			{
-				swError("fork() failed.");
+				printf("fork() failed.");
 				return SW_ERR;
 			}
 			else
@@ -34,6 +35,7 @@ int manageProccess(int workerNum)
 			}
 		}
 	}
+	return 1;
 }
 
 int tyWorker_loop(int worker_id){
@@ -64,6 +66,8 @@ int tyWorker_loop(int worker_id){
     //TODO fdtype 是否需要转化 swReactorEpoll_event_set
     epollAdd(epollfd,readfd,fdtype);
 
+    int nfds;
+    int i;
     //循环等待事件触发
     while(1)
 	{
@@ -71,7 +75,7 @@ int tyWorker_loop(int worker_id){
 		* nfds：为发生的事件的个数。可用描述符数量
 		* 注：
 		*/
-		nfds=epoll_wait(epfd,local_events,20,500);
+		nfds=epoll_wait(epollfd,local_events,20,500);
 		//处理可用描述符的事件
 		for(i=0;i<nfds;++i)
 		{
@@ -93,20 +97,20 @@ int tyWorker_loop(int worker_id){
  */
 int swWorker_onPipeReceive(int fd){
     swEventData task;
-    char line[MAXLENGTH];
+//    char line[MAXLENGTH];
     int n;
 
-	if ((n=recv(sockfd, task, sizeof(task), 0)) > 0)
+	if ((n=recv(fd, &task, sizeof(task), 0)) > 0)
 	{
 		//需要将连接fd传给php
-		php_tinys_onReceive(sockfd,line,n);
+		php_tinys_onReceive(task.info.from_fd,task.data,task.info.len);
 
 	}
 }
 
 
-
-static pid_t tyManager_spawn_worker(int worker_id)
+//static
+ pid_t tyManager_spawn_worker(int worker_id)
 {
     pid_t pid;
     int ret;
@@ -122,7 +126,7 @@ static pid_t tyManager_spawn_worker(int worker_id)
     //worker child processor
     else if (pid == 0)
     {
-    	print("worker child processor \n");
+    	printf("worker child processor \n");
     	//TODO 监听pipe管道事件
 
         ret = tyWorker_loop( worker_id);
@@ -131,7 +135,7 @@ static pid_t tyManager_spawn_worker(int worker_id)
     //parent,add to writer
     else
     {
-    	print("worker child pid %d \n",pid);
+    	printf("worker child pid %d \n",pid);
 
         return pid;
     }

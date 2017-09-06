@@ -130,7 +130,7 @@ PHP_METHOD(tinys, on)
 		efree(func_name);
 		return;
 	}
-	printf("Function '%s' ", func_name);
+	printf("Function '%s' \n", func_name);
 	efree(func_name);
 	convert_to_string(name);
 	char *callback_name[PHP_SERVER_CALLBACK_NUM] = {
@@ -175,7 +175,7 @@ PHP_METHOD(tinys, run)
 	printf("to run server\n");
 	port = (int)port_in;
 	//调用server
-	server(ip,port);
+	runServer(ip,port);
 }
 //发送数据方法
 PHP_METHOD(tinys, send)
