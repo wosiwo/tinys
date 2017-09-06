@@ -29,6 +29,11 @@ int resLength;
 //tyWorker变量保存worker进程信息
 tyWorker  workers[WORKER_NUM];
 
+
+//通过连接fd，获取主进程管道(后续用于获取reactor线程管道)
+int connFd2Pipe[1000];
+
+
 struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
 int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
 
@@ -80,8 +85,13 @@ int epollEventSet(int efd, int fd, int events) {
     return SW_OK;
 }
 
+int masterSocks[2];
 
 int runServer(char* ip,int port){
+	int ret;
+	//创建主进程管道
+	ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, masterSocks);
+
 	//创建manager进程及其下的各个worker子进程
 	int workerNum ;
 	workerNum = WORKER_NUM;
@@ -99,7 +109,6 @@ int runServer(char* ip,int port){
 }
 
 
-int masterSocks[2];
 
 //服务启动
 int mainReactorRun(char* ip,int port)
@@ -140,14 +149,17 @@ int mainReactorRun(char* ip,int port)
     //创建管道，epoll监听
     int ret;
 
-    int readfd;
-    ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, masterSocks);
+    int readfd,writefd;
+
     //获取用于读取的fd
      readfd = masterSocks[1];
+     writefd = masterSocks[0];
+     printf("master pipe readfd %d writefd %d \n",readfd,writefd);
 //     int pipe_fdtype = SW_FD_PIPE | SW_EVENT_READ;
      int pipe_fdtype = EPOLLIN|EPOLLET;
 	 //TODO fdtype 是否需要转化 swReactorEpoll_event_set
 	 epollAdd(epfd,readfd,pipe_fdtype);
+	 epollAdd(epfd,writefd,pipe_fdtype);
     while(1)
     {
 		/* epoll_wait：等待epoll事件的发生，并将发生的sokct fd和事件类型放入到events数组中；
@@ -158,8 +170,15 @@ int mainReactorRun(char* ip,int port)
         //处理可用描述符的事件
         for(i=0;i<nfds;++i)
         {
+
+    		if(events[i].events&EPOLLIN){
+    			//打印出所有in事件
+    			printf("events[i].data.fd %d \n",events[i].data.fd);
+    		}
+
         		printf("nfds %d \n",nfds);
         		//当监听端口描述符可用时，接收链接的时候
+
             if(events[i].data.fd==listenfd)
             {
             		/* 获取发生事件端口信息，存于clientaddr中；
@@ -183,11 +202,12 @@ int mainReactorRun(char* ip,int port)
             }
 			else if(events[i].events&EPOLLIN && events[i].data.fd==readfd)//当数据进入触发下面的流程
 			{
+				printf("master rec worker pipe \n");
 				//TODO worker进程返回的数据，接收完发给客户端
 				swEventData task;
 				int n;
 
-				if ((n=recv(sockfd, &task, sizeof(task), 0)) > 0)
+				if ((n=recv(events[i].data.fd, &task, sizeof(task), 0)) > 0)
 				{
 					//修改事件状态为输出
 					setOutPut(task.data,task.info.from_fd,task.info.len);
@@ -221,18 +241,28 @@ int mainReactorRun(char* ip,int port)
 					//TODO 写入管道,抛给worker子进程
 				//取取余数获取worker进程，将数据写入其监听的管道中
 				int i = sockfd%WORKER_NUM;
+				printf(" rand worker id %d \n",i);
 				int pipeWriteFd = workers[i].pipWriteFd;
 				int ret;
 
 				swEventData task;
 				task.info.from_fd = sockfd;
 				task.info.len = n;
+				//将主进程的管道id传给worker进程[后续要传入reactor线程的管道id]
+				task.info.topipe_fd = masterSocks[0];
+
+
+
+
+
 				//TODO 后续多个reactor线程，需要记录线程id
 				// 需要写一个结构体，传入连接fd
 				memcpy(task.data, line, n);
+
+				printf("write worker_pipe_fd fd %d \n",pipeWriteFd);
+
 				ret = write(pipeWriteFd, &task, sizeof(task));
 
-				printf("write worker_pipe_fd fd %d ret %d",pipeWriteFd,ret);
 			}
 			else if(events[i].events&EPOLLOUT)//当数据发送触发下面的流程
 			{
@@ -271,9 +301,11 @@ int send2ReactorPipe(char * data,int fd,int length){
 	task.info.len = length;
 	memcpy(task.data, data, length);
 
+	//worker进程取不到fork之后在主进程创建的变量
+	int masterWritePipe = connFd2Pipe[fd];
 
-	int masterWritePipe = masterSocks[0];
-
+	printf("send2ReactorPipe fd %d \n",fd);
+	printf("send2ReactorPipe masterWritePipe %d \n",masterWritePipe);
 	ret = write(masterWritePipe, &task, sizeof(task));
 
 	return 1;

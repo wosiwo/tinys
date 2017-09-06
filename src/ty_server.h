@@ -72,6 +72,7 @@ typedef struct _swDataHead
     uint8_t type;
     uint8_t flags;
     uint16_t from_fd;
+    uint16_t topipe_fd;
 } swDataHead;
 
 //typedef struct _swEvent
@@ -97,5 +98,6 @@ typedef struct _tyWorker{
 	int pid;
 	int pipReadFd;
 	int pipWriteFd;
+	int pipeMasterWriteFd;
 } tyWorker;
 

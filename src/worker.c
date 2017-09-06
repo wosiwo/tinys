@@ -6,15 +6,46 @@
 
 //引用worker各个子进程的的信息变量
 extern tyWorker workers[WORKER_NUM];
+
+//主进程管道
+//extern int masterSocks[2];
+
+//连接fd与主进程pipefd的关联
+extern int connFd2Pipe[1000];
+
+/**
+ * 创建各个worker子进程的管道
+ */
+int createWorkerPipe(int workerNum){
+	int i;
+	int ret;
+	int socks[2];
+
+	//需要再master进程中初始化好worker进程所用的管道，在manager进程初始化master进程取不到数据
+	for (i = 0; i < workerNum; i++)
+	{
+		//在master进程中将所有管道都创建好
+		ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, socks);
+
+		//获取用于读取的fd
+		workers[i].pipReadFd = socks[1];
+		workers[i].pipWriteFd = socks[0];
+//		workers[i].pipeMasterWriteFd = masterSocks[0];
+		printf("worker_id %d pipWriteFd %d \n",i,workers[i].pipWriteFd);
+	}
+	return 1;
+
+}
 /**
  * 创建manager进程
  */
 int manageProccess(int workerNum)
 {
-    pid_t pid;
-    int i;
-    int ret;
-    int socks[2];
+	pid_t pid;
+	int i;
+	createWorkerPipe(workerNum);
+
+
 
 	pid = fork();
 	switch (pid)
@@ -23,14 +54,6 @@ int manageProccess(int workerNum)
 	case 0:
 		for (i = 0; i < workerNum; i++)
 		{
-			//在manager进程中将所有管道都创建好
-			ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, socks);
-
-			//获取用于读取的fd
-			workers[i].pipReadFd = socks[1];
-			workers[i].pipWriteFd = socks[0];
-			printf("worker_id %d pipWriteFd %d \n",i,workers[i].pipWriteFd);
-
 			//close(worker_pipes[i].pipes[0]);
 			pid = tyManager_spawn_worker( i);
 			if (pid < 0)
@@ -61,6 +84,7 @@ int tyWorker_loop(int worker_id){
 	//取出在manager进程中创建好的管道
 	readfd = workers[worker_id].pipReadFd;
 
+
     //创建epoll
     epollfd = epollCreate();
     //添加监听事件，监听管道
@@ -83,7 +107,7 @@ int tyWorker_loop(int worker_id){
 		//处理可用描述符的事件
 		for(i=0;i<nfds;++i)
 		{
-				printf("nfds %d \n",nfds);
+				printf("tyWorker_loop nfds %d \n",nfds);
 				//当监听端口描述符可用时，接收链接的时候
 				if(local_events[i].events&EPOLLIN)//当数据进入触发下面的流程
 				{
@@ -106,6 +130,8 @@ int swWorker_onPipeReceive(int fd){
 
 	if ((n=recv(fd, &task, sizeof(task), 0)) > 0)
 	{
+		//连接id与主进程pipefd的关联 [后续在主进程随机指定一个reactor线程的管道]
+		connFd2Pipe[task.info.from_fd] = task.info.topipe_fd;
 		//需要将连接fd传给php
 		php_tinys_onReceive(task.info.from_fd,task.data,task.info.len);
 

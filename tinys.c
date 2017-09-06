@@ -196,10 +196,10 @@ PHP_METHOD(tinys, send)
 	convert_to_string(zdata);
 	printf("tinys_send 2.1 \n");
 	int length = Z_STRLEN_P(zdata);
-	printf("tinys_send 2.2 length %l \n",length);
+	printf("tinys_send 2.2 length %d \n",length);
 	data = Z_STRVAL_P(zdata);
 	printf("tinys_send 3 \n");
-	printf("send data %s",data);
+	printf("send data %s \n",data);
 	if (length < 0)
 	{
 		RETURN_FALSE;
