@@ -28,10 +28,10 @@ int createWorkerPipe(int workerNum){
 		ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, socks);
 
 		//获取用于读取的fd
-		workers[i].pipReadFd = socks[1];
-		workers[i].pipWriteFd = socks[0];
+		workers[i].pipWorkerFd = socks[1];
+		workers[i].pipMasterFd = socks[0];
 //		workers[i].pipeMasterWriteFd = masterSocks[0];
-		printf("worker_id %d pipWriteFd %d \n",i,workers[i].pipWriteFd);
+		printf("worker_id %d pipMasterFd %d \n",i,workers[i].pipMasterFd);
 	}
 	return 1;
 

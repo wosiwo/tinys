@@ -14,6 +14,7 @@
 
 
 #define WORKER_NUM 1
+#define REACTOR_NUM 1
 
 #define MAXLINE 5000
 #define MAXLENGTH 2465792
@@ -96,8 +97,14 @@ struct tyServer{
 };
 typedef struct _tyWorker{
 	int pid;
-	int pipReadFd;
-	int pipWriteFd;
-	int pipeMasterWriteFd;
+	int pipWorkerFd;
+	int pipMasterFd;
+//	int pipeMasterWriteFd;
 } tyWorker;
+
+
+typedef struct _tyReactor{
+	pthread_t pidt;
+	int epfd;
+} tyReactor;
 
