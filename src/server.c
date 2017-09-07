@@ -224,6 +224,9 @@ static int swReactorThread_loop(int reactor_id)
 
 						printf("write worker_pipe_fd fd %d \n",pipeWriteFd);
 
+						//跑给worker进程后就不再监听本次连接
+						epoll_ctl( epollfd, EPOLL_CTL_DEL, sockfd, 0 );
+
 						ret = write(pipeWriteFd, &task, sizeof(task));
 				}if(events[i].events&EPOLLIN){	//接受worker进程返回的数据
 					printf("master rec worker pipe \n");
@@ -239,13 +242,10 @@ static int swReactorThread_loop(int reactor_id)
 						ret =  write(task.info.from_fd, task.data, task.info.len);
 						printf("ret %d \n",ret);
 						if (ret<0)
-					{
-						printf("errno %d \n",errno);
-					}
-						ev.data.fd=task.info.from_fd;//设置用于读操作的文件描述符
-						ev.events=EPOLLET;//设置用于注测的读操作事件 EPOLLIN|
-						//EPOLL_CTL_DEL
-						epoll_ctl( epfd, EPOLL_CTL_DEL, task.info.from_fd, 0 );
+						{
+							printf("errno %d \n",errno);
+						}
+
 						close( task.info.from_fd );
 					}
 				}
