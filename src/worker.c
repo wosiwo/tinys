@@ -7,11 +7,6 @@
 //引用worker各个子进程的的信息变量
 extern tyWorker workers[WORKER_NUM];
 
-//主进程管道
-//extern int masterSocks[2];
-
-//连接fd与主进程pipefd的关联
-extern int connFd2Pipe[1000];
 
 //各个worker子进程中保存本进程信息
 extern tyWorker worker;
@@ -174,6 +169,7 @@ int swWorker_onPipeReceive(int fd,int worker_id){
     	//TODO 监听pipe管道事件
     	workers[worker_id].pid = pid;
     	worker = workers[worker_id];
+    	printf("worker master %d \n",worker.pipMasterFd);
         ret = tyWorker_loop( worker_id);
         exit(ret);
     }
