@@ -69,7 +69,7 @@ int manageProccess(int workerNum)
 		//manager循环
 		//TODO manager进程管理功能
 		while(1){
-
+			sleep(60);
 		}
 		exit(0);
 		break;
