@@ -13,6 +13,9 @@ extern tyWorker workers[WORKER_NUM];
 //连接fd与主进程pipefd的关联
 extern int connFd2Pipe[1000];
 
+//各个worker子进程中保存本进程信息
+extern tyWorker worker;
+
 /**
  * 创建各个worker子进程的管道
  */
@@ -126,7 +129,7 @@ int tyWorker_loop(int worker_id){
 				{
 					pipefd = local_events[i].data.fd;
 					//从pipe中读取数据
-					swWorker_onPipeReceive(pipefd);
+					swWorker_onPipeReceive(pipefd,worker_id);
 
 				}
 		}
@@ -136,15 +139,13 @@ int tyWorker_loop(int worker_id){
 /**
  * 从管道中读取数据，并发送给php
  */
-int swWorker_onPipeReceive(int fd){
+int swWorker_onPipeReceive(int fd,int worker_id){
     swEventData task;
 //    char line[MAXLENGTH];
     int n;
 
 	if ((n=recv(fd, &task, sizeof(task), 0)) > 0)
 	{
-		//连接id与主进程pipefd的关联 [后续在主进程随机指定一个reactor线程的管道]
-		connFd2Pipe[task.info.from_fd] = task.info.topipe_fd;
 		//需要将连接fd传给php
 		php_tinys_onReceive(task.info.from_fd,task.data,task.info.len);
 
@@ -171,7 +172,8 @@ int swWorker_onPipeReceive(int fd){
     {
     	printf("worker child processor worker_id %d \n",worker_id);
     	//TODO 监听pipe管道事件
-
+    	workers[worker_id].pid = pid;
+    	worker = workers[worker_id];
         ret = tyWorker_loop( worker_id);
         exit(ret);
     }

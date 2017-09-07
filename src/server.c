@@ -28,13 +28,15 @@ int resLength;
 
 //tyWorker变量保存worker进程信息
 tyWorker  workers[WORKER_NUM];
-
+tyWorker worker;
 //tyReactor 保存reactor线程信息
 tyReactor  reactors[REACTOR_NUM];
 
 
 //通过连接fd，获取主进程管道(后续用于获取reactor线程管道)
-int connFd2Pipe[1000];
+int connFd2WorkerId[1000];
+
+//保存本进程信息
 
 
 struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
@@ -119,6 +121,7 @@ void * swReactorThread_loop(int reactor_id)
 			//添加监听事件，监听管道
 			int fdtype = EPOLLIN|EPOLLET;
 			//TODO fdtype 是否需要转化 swReactorEpoll_event_set
+			printf("reactor_id %d worker_id %d pipe_fd %d \n",reactor_id,i,pipe_fd);
 			epollAdd(epollfd,pipe_fd,fdtype);
 
 
@@ -146,10 +149,11 @@ void * swReactorThread_loop(int reactor_id)
 			//处理可用描述符的事件
 			for(i=0;i<nfds;++i)
 			{
+
 				//TODO 区分主进程抛过来的连接，还是worker进程写回的数据
-				if(events[i].events&EPOLLIN && events[i].data.fd!=pipe_fd)//不是worker返回数据，则认为是主进程添加的连接监听
+				if(events[i].events&EPOLLIN && local_events[i].data.fd!=pipe_fd)//不是worker返回数据，则认为是主进程添加的连接监听
 				{
-					sockfd = events[i].data.fd;
+					sockfd = local_events[i].data.fd;
 					printf("connfd sockfd %d",sockfd);
 						printf("read 0\n");
 						if ( (n = recv(sockfd, line, MAXLENGTH, 0)) < 0){
@@ -157,14 +161,14 @@ void * swReactorThread_loop(int reactor_id)
 							if (errno == ECONNRESET)
 							{
 								close(sockfd);
-								events[i].data.fd = -1;
+								local_events[i].data.fd = -1;
 							}else{
 								printf("readline error");
 							}
 						}else if (n == 0){
 								printf("read error \n");
 								close(sockfd);
-								events[i].data.fd = -1;
+								local_events[i].data.fd = -1;
 						}
 						printf("line %s \n",line);
 						printf("line1 %c \n",line[20]);
@@ -200,13 +204,13 @@ void * swReactorThread_loop(int reactor_id)
 						epoll_ctl( epollfd, EPOLL_CTL_DEL, sockfd, 0 );
 
 						ret = write(pipeWriteFd, &task, sizeof(task));
-				}if(events[i].events&EPOLLIN){	//接受worker进程返回的数据
+				}else if(local_events[i].events&EPOLLIN){	//接受worker进程返回的数据
 					printf("master rec worker pipe \n");
 					//TODO worker进程返回的数据，接收完发给客户端
 					swEventData task;
 					int n;
 
-					if ((n=recv(events[i].data.fd, &task, sizeof(task), 0)) > 0)
+					if ((n=recv(local_events[i].data.fd, &task, sizeof(task), 0)) > 0)
 					{
 						//TODO 判断是否可以直接输出，还是必须修改epoll事件状态
 						//修改事件状态为输出
@@ -372,7 +376,7 @@ int mainReactorWait(int mainEpollFd){
 	                    return 1;
 	                }
 	                perror("setnonblocking\n");
-	                setnonblocking(new_fd);
+//	                setnonblocking(new_fd);
 	                char *str = inet_ntoa(clientaddr.sin_addr);
 
 	                //给reactor线程添加监听事件，监听本次连接
@@ -400,7 +404,9 @@ int send2ReactorPipe(char * data,int fd,int length){
 	memcpy(task.data, data, length);
 
 	//worker进程取不到fork之后在主进程创建的变量
-	int masterWritePipe = connFd2Pipe[fd];
+	int masterWritePipe = worker.pipWorkerFd;
+
+
 
 	printf("send2ReactorPipe fd %d \n",fd);
 	printf("send2ReactorPipe masterWritePipe %d \n",masterWritePipe);
