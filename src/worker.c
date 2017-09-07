@@ -42,6 +42,7 @@ int createWorkerPipe(int workerNum){
 int manageProccess(int workerNum)
 {
 	pid_t pid;
+	pid_t subpid;
 	int i;
 	createWorkerPipe(workerNum);
 
@@ -55,8 +56,8 @@ int manageProccess(int workerNum)
 		for (i = 0; i < workerNum; i++)
 		{
 			//close(worker_pipes[i].pipes[0]);
-			pid = tyManager_spawn_worker( i);
-			if (pid < 0)
+			subpid = tyManager_spawn_worker( i);
+			if (subpid < 0)
 			{
 				printf("fork() failed.");
 				return SW_ERR;
@@ -67,8 +68,20 @@ int manageProccess(int workerNum)
 				workers[i].pid = pid;
 			}
 		}
+		//manager循环
+		//TODO manager进程管理功能
+		while(1){
+
+		}
+		exit(0);
+		break;
+
+	//master process
+	default:
+		break;
 	}
 	return 1;
+
 }
 
 int tyWorker_loop(int worker_id){
@@ -82,7 +95,7 @@ int tyWorker_loop(int worker_id){
 	int epollfd;
 	//TODO 监听pipe管道事件
 	//取出在manager进程中创建好的管道
-	readfd = workers[worker_id].pipReadFd;
+	readfd = workers[worker_id].pipWorkerFd;
 
 
     //创建epoll
