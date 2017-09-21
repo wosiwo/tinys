@@ -67,6 +67,6 @@ char *cli_recv() {
 	return recvBuff;
 }
 //关闭连接
-int cli_close() {
-
+void cli_close() {
+	close(cl_socket);
 }

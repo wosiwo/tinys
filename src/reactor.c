@@ -1,7 +1,4 @@
-
 #include "ty_server.h"
-
-
 
 //引用worker各个子进程的的信息变量
 extern tyWorker workers[WORKER_NUM];
@@ -13,7 +10,6 @@ tyReactor  reactors[REACTOR_NUM];
  * 监听当前线程对应的worker进程的pipMasterFd
  */
 int reactorMapWorker(int reactor_id,int epollfd){
-
 	int pipe_fd;
 	int i;
 	//监听某个worker进程的pipemasterfd
@@ -21,19 +17,15 @@ int reactorMapWorker(int reactor_id,int epollfd){
 		if (i % REACTOR_NUM == reactor_id)
 		{
 			pipe_fd = workers[i].pipMasterFd;
-
 			//添加监听事件，监听管道
 			int fdtype = EPOLLIN|EPOLLET;
 			//TODO fdtype 是否需要转化 swReactorEpoll_event_set
 			printf("reactor_id %d worker_id %d pipe_fd %d \n",reactor_id,i,pipe_fd);
 			epollAdd(epollfd,pipe_fd,fdtype);
-
-
 		}
 	}
 	return pipe_fd;
 }
-
 
 //发送数据给worker进程
 int reactorSend2Worker(int epollfd,int sockfd,char * line, ssize_t n){
@@ -58,6 +50,5 @@ int reactorSend2Worker(int epollfd,int sockfd,char * line, ssize_t n){
 	epoll_ctl( epollfd, EPOLL_CTL_DEL, sockfd, 0 );
 
 	ret = write(pipeWriteFd, &task, sizeof(task));
-
 	return 1;
 }

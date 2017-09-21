@@ -1,4 +1,3 @@
-
 //TODO
 /**
  * 	1. new socked
@@ -22,7 +21,6 @@ int setnonblocking( int fd )
     return old_option;
 }
 
-
 char response[MAXLENGTH];
 int resLength;
 
@@ -32,29 +30,28 @@ tyWorker worker;
 //tyReactor 保存reactor线程信息
 tyReactor  reactors[REACTOR_NUM];
 
-
 //通过连接fd，获取主进程管道(后续用于获取reactor线程管道)
 int connFd2WorkerId[1000];
-
-//保存本进程信息
-
-
-struct epoll_event ev,events[20];//ev用于注册事件,数组用于回传要处理的事件
+//ev用于注册事件,数组用于回传要处理的事件
+struct epoll_event ev,events[20];
 int i, maxi, listenfd, new_fd, sockfd,epfd,nfds;
 
-int setOutPut(char * data,int fd,int length){
+//将某个描述符注册为可写
+void setOutPut(char * data,int fd,int length){
 	printf("setOutPut fd %d \n",fd);
 	printf("epfd fd %d \n",epfd);
-
 	resLength =length;
-
 	memcpy(response, data, resLength);
 	//strcpy(response, data);	//data 中包含 \0(可能) 不能使用strcpy
-	ev.data.fd=fd;//设置用于写操作的文件描述符
-	ev.events=EPOLLOUT|EPOLLET;//设置用于注测的写操作事件
-	epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);//修改sockfd上要处理的事件为EPOLLOUT
+	//设置用于写操作的文件描述符
+	ev.data.fd=fd;
+	//设置用于注测的写操作事件
+	ev.events=EPOLLOUT|EPOLLET;
+	//修改sockfd上要处理的事件为EPOLLOUT
+	epoll_ctl(epfd,EPOLL_CTL_MOD,fd,&ev);
 }
 
+//创建epoll
 int epollCreate(){
 	int tmpEpFd;
     //生成用于处理accept的epoll专用的文件描述符
@@ -62,36 +59,32 @@ int epollCreate(){
     return tmpEpFd;
 }
 
-int epollAdd(int epollfd,int readfd, int fdtype){
+//添加监听事件
+int epollAdd(int epollfd,int fd, int eventType){
 	struct epoll_event e;
-	setnonblocking(readfd);
-	//生成用于处理accept的epoll专用的文件描述符
-//	epfd=epoll_create(256);
+	setnonblocking(fd);
 	//设置与要处理的事件相关的文件描述符
-	e.data.fd=readfd;
+	e.data.fd=fd;
 	//设置要处理的事件类型
-	e.events=fdtype;
-//	e.events=SW_FD_PIPE | SW_EVENT_READ;
+	e.events=eventType;
 	//注册epoll事件
-	epoll_ctl(epollfd,EPOLL_CTL_ADD,readfd,&e);
-
+	epoll_ctl(epollfd,EPOLL_CTL_ADD,fd,&e);
 	return SW_OK;
 }
 
-
-int epollEventSet(int efd, int fd, int events) {
+//修改监听事件
+int epollEventSet(int epollfd, int fd, int eventType) {
     struct epoll_event ev;
     memset(&ev, 0, sizeof(ev));
-    ev.events = events;
     ev.data.fd = fd;
-
-    int r = epoll_ctl(efd, EPOLL_CTL_MOD, fd, &ev);
-
+    ev.events = eventType;
+    int r = epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &ev);
     return SW_OK;
 }
 
 /**
  * ReactorThread main Loop
+ * 线程循环内容
  */
 int swReactorThread_loop(int reactor_id)
 {
@@ -99,9 +92,8 @@ int swReactorThread_loop(int reactor_id)
 	int epollfd;
 	int sockfd;
 	struct epoll_event local_events[20];
-
+	//线程id
 	pthread_t thread_id = pthread_self();
-
 	//创建epoll
 	epollfd = epollCreate();
 
@@ -130,9 +122,9 @@ int swReactorThread_loop(int reactor_id)
 		//处理可用描述符的事件
 		for(i=0;i<nfds;++i)
 		{
-
 			//TODO 区分主进程抛过来的连接，还是worker进程写回的数据
-			if(local_events[i].events&EPOLLIN && local_events[i].data.fd!=pipe_fd)//不是worker返回数据，则认为是主进程添加的连接监听
+			//不是worker返回数据，则认为是主进程添加的连接监听
+			if(local_events[i].events&EPOLLIN && local_events[i].data.fd!=pipe_fd)
 			{
 				sockfd = local_events[i].data.fd;
 				printf("connfd sockfd %d",sockfd);
@@ -163,15 +155,12 @@ int swReactorThread_loop(int reactor_id)
 				if ((n=recv(local_events[i].data.fd, &task, sizeof(task), 0)) > 0)
 				{
 					//TODO 判断是否可以直接输出，还是必须修改epoll事件状态
-					//修改事件状态为输出
-//						setOutPut(task.data,task.info.from_fd,task.info.len);
 					ret =  write(task.info.from_fd, task.data, task.info.len);
 					printf("ret %d \n",ret);
 					if (ret<0)
 					{
 						printf("errno %d \n",errno);
 					}
-
 					close( task.info.from_fd );
 				}
 			}
@@ -179,11 +168,9 @@ int swReactorThread_loop(int reactor_id)
 	}
 }
 
-int runServer(char* ip,int port){
+//server启动
+void runServer(char* ip,int port){
 	int ret;
-	//创建主进程管道 作废，都使用worker进程的管道
-//	ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, masterSocks);
-
 	int pid =getpid();
 	int forkPid ;
 	int mainEpollFd;
@@ -193,15 +180,12 @@ int runServer(char* ip,int port){
 	int workerNum ;
 	workerNum = WORKER_NUM;
 	forkPid = manageProccess(workerNum);
-	if(forkPid==0){	//
-//		exit(1);
+	if(forkPid==0){
 		return 0;
 	}
-
 	// 获取pid
 	int pid1 =getpid();
 	printf("pid1  %d\n",pid1);
-
 
 	mainEpollFd = mainReactorRun(ip, port);
 
@@ -219,12 +203,10 @@ int runServer(char* ip,int port){
 	}
 	//主进程开始循环监听
 	mainReactorWait(mainEpollFd);
-
-
 }
 
 
-//服务启动
+//服务主进程启动接受链接
 int mainReactorRun(char* ip,int port)
 {
 	printf("mainReactorRun ip %s port %d \n",ip,port);
@@ -267,43 +249,40 @@ int mainReactorWait(int mainEpollFd){
 	socklen_t clilen;
 	struct sockaddr_in clientaddr;
 	while(1)
-	    {
-			/* epoll_wait：等待epoll事件的发生，并将发生的sokct fd和事件类型放入到events数组中；
-			* nfds：为发生的事件的个数。可用描述符数量
-			*/
-	        nfds=epoll_wait(epfd,events,20,500);
-	        //处理可用描述符的事件
-	        for(i=0;i<nfds;++i)
-	        {
-	        	//当监听端口描述符可用时，接收链接的时候
-	            if(events[i].data.fd==mainEpollFd)
-	            {
-	            	/* 获取发生事件端口信息，存于clientaddr中；
-	                *new_fd：返回的新的socket描述符，用它来对该事件进行recv/send操作*/
-	                new_fd = accept(mainEpollFd,(struct sockaddr *)&clientaddr, &clilen);
-	                printf("new_fd %d \n",new_fd);
-	                if(new_fd<0)
-				   {
-	                    perror("new_fd<0\n");
-	                    return 1;
-	                }
-	                perror("setnonblocking\n");
-	                setnonblocking(new_fd);
-	                char *str = inet_ntoa(clientaddr.sin_addr);
+	{
+		/* epoll_wait：等待epoll事件的发生，并将发生的sokct fd和事件类型放入到events数组中；
+		* nfds：为发生的事件的个数。可用描述符数量
+		*/
+		nfds=epoll_wait(epfd,events,20,500);
+		//处理可用描述符的事件
+		for(i=0;i<nfds;++i)
+		{
+				//当监听端口描述符可用时，接收链接的时候
+			if(events[i].data.fd==mainEpollFd)
+			{
+					/* 获取发生事件端口信息，存于clientaddr中；
+				*new_fd：返回的新的socket描述符，用它来对该事件进行recv/send操作*/
+				new_fd = accept(mainEpollFd,(struct sockaddr *)&clientaddr, &clilen);
+				printf("new_fd %d \n",new_fd);
+				if(new_fd<0)
+			   {
+					perror("new_fd<0\n");
+					return 1;
+				}
+				perror("setnonblocking\n");
+				setnonblocking(new_fd);
+				char *str = inet_ntoa(clientaddr.sin_addr);
 
-	                //给reactor线程添加监听事件，监听本次连接
-	                int reactor_id = new_fd%REACTOR_NUM; //连接fd对REACTOR_NUM取余，决定抛给哪个reactor线程
-	                int reactor_epfd = reactors[reactor_id].epfd;
-	                printf("reactor_epfd %d new_fd %d \n",reactor_epfd,new_fd);
-				   int fdtype =EPOLLIN|EPOLLET;
-				   epollAdd(reactor_epfd,new_fd,fdtype);
-
-	            }
-	        }
-	    }
+				//给reactor线程添加监听事件，监听本次连接
+				int reactor_id = new_fd%REACTOR_NUM; //连接fd对REACTOR_NUM取余，决定抛给哪个reactor线程
+				int reactor_epfd = reactors[reactor_id].epfd;
+				printf("reactor_epfd %d new_fd %d \n",reactor_epfd,new_fd);
+				int fdtype =EPOLLIN|EPOLLET;
+				epollAdd(reactor_epfd,new_fd,fdtype);
+			}
+		}
+	}
 }
-
-
 
 /**
  * 将php返回的数据，写入pipWorkerFd管道中，由监听该管的reactor线程发送给客户端
